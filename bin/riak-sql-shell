@@ -1,0 +1,58 @@
+#!/usr/bin/env ruby
+
+require "bundler/setup"
+require "riak/sql/shell"
+
+require 'trollop'
+require 'readline'
+require 'terminal-table'
+require 'riak/client'
+
+require 'pry'
+
+opts = Trollop::options do
+  opt :host, "Hostname or IP address to connect to", default: 'localhost'
+  opt :pb_port, "Port number to connect to", default: 8087
+end
+
+okay_opts = opts.keep_if do |key, _value|
+  Riak::Client::VALID_OPTIONS.include? key
+end
+
+client = Riak::Client.new okay_opts
+prompt = "#{opts[:host]}:#{opts[:pb_port]} sql> "
+
+while buf = Readline.readline(prompt, true)
+  if buf =~ /^\\l\s/ # list keys
+    table_name = buf.split(/\s+/, 2)
+
+    listing = Riak::TimeSeries::List.new client, table_name
+
+    table = Terminal::Table.new rows: listing.issue!
+
+    puts table
+    
+    next
+  end
+  
+  query = Riak::TimeSeries::Query.new client, buf
+  begin
+    query.issue!
+  rescue => e
+    puts e.inspect
+    next
+  end
+
+  results = query.results
+
+  column_headers = results.columns.map do |cd|
+    type_name = cd.
+                name_for(Riak::Client::BeefcakeProtobuffsBackend::TsColumnType,
+                         cd.type)
+    "#{cd.name}<#{type_name}>"
+  end
+
+  table = Terminal::Table.new rows: results, headings: column_headers
+
+  puts table
+end
