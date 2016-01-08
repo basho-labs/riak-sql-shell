@@ -10,6 +10,8 @@ require 'riak/client'
 
 require 'pry'
 
+Terminal::Table::Style.defaults = { border_i: '|' }
+
 opts = Trollop::options do
   opt :host, "Hostname or IP address to connect to", default: 'localhost'
   opt :pb_port, "Port number to connect to", default: 8087
